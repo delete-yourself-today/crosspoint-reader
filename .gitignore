@@ -16,6 +16,8 @@ build
 /.venv
 *.local*
 *.cpfont
+# Credential files live on the SD card, never committed (see docs/*.example.json)
+/readeck.json
 lib/EpdFont/scripts/downloaded_fonts/
 lib/EpdFont/scripts/instanced_fonts/
 lib/EpdFont/scripts/output/

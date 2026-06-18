@@ -44,4 +44,11 @@ class HttpDownloader {
   static DownloadError downloadToFile(const std::string& url, const std::string& destPath,
                                       ProgressCallback progress = nullptr, bool* cancelFlag = nullptr,
                                       const std::string& username = "", const std::string& password = "");
+
+  // --- Bearer-token variant (added for Readeck; see src/readeck) ---
+  // Same as downloadToFile above, but sends `Authorization: Bearer <token>`.
+  // Kept as a separate appended overload so the existing public API is unchanged.
+  static DownloadError downloadToFileBearer(const std::string& url, const std::string& destPath,
+                                            const std::string& token, ProgressCallback progress = nullptr,
+                                            bool* cancelFlag = nullptr);
 };

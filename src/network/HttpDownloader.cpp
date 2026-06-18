@@ -44,7 +44,7 @@ bool isRedirect(int status) {
 // that ends early as ESP_ERR_HTTP_INCOMPLETE_DATA, whereas the read loop streams
 // large/slow files and surfaces a short read directly.
 HttpDownloader::DownloadError runGet(const std::string& url, const std::string& username, const std::string& password,
-                                     Sink& sink) {
+                                     Sink& sink, const std::string& bearerToken = "") {
   esp_http_client_config_t config = {};
   config.url = url.c_str();
   config.buffer_size = HTTP_RX_BUF;
@@ -66,7 +66,11 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
   }
 
   esp_http_client_set_header(client, "User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
-  if (!username.empty() && !password.empty()) {
+  if (!bearerToken.empty()) {
+    // Preemptive Bearer auth (Readeck API token).
+    const std::string header = "Bearer " + bearerToken;
+    esp_http_client_set_header(client, "Authorization", header.c_str());
+  } else if (!username.empty() && !password.empty()) {
     // Preemptive Basic auth, like the prior addHeader; don't wait for a 401.
     const std::string credentials = username + ":" + password;
     const String header = "Basic " + base64::encode(credentials.c_str());
@@ -193,6 +197,44 @@ HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& 
   const DownloadError result = runGet(url, username, password, sink);
   // Close before any remove() on the same path; DESTRUCTOR_CLOSES_FILE would
   // otherwise close only after the remove.
+  file.close();
+
+  if (result != OK) {
+    Storage.remove(destPath.c_str());
+    return result;
+  }
+  if (sink.downloaded == 0) {
+    LOG_ERR("HTTP", "no data received");
+    Storage.remove(destPath.c_str());
+    return HTTP_ERROR;
+  }
+  LOG_DBG("HTTP", "Downloaded %zu bytes", sink.downloaded);
+  return OK;
+}
+
+// --- Bearer-token variant (added for Readeck) ---
+
+HttpDownloader::DownloadError HttpDownloader::downloadToFileBearer(const std::string& url, const std::string& destPath,
+                                                                   const std::string& token, ProgressCallback progress,
+                                                                   bool* cancelFlag) {
+  LOG_DBG("HTTP", "Downloading (bearer): %s -> %s", url.c_str(), destPath.c_str());
+
+  if (Storage.exists(destPath.c_str())) {
+    Storage.remove(destPath.c_str());
+  }
+  HalFile file;
+  if (!Storage.openFileForWrite("HTTP", destPath.c_str(), file)) {
+    LOG_ERR("HTTP", "Failed to open file for writing");
+    return FILE_ERROR;
+  }
+
+  Sink sink;
+  sink.progress = std::move(progress);
+  sink.cancelFlag = cancelFlag;
+  sink.write = [&file](const uint8_t* data, size_t len) { return file.write(data, len) == len; };
+
+  const DownloadError result = runGet(url, "", "", sink, token);
+  // Close before any remove() on the same path.
   file.close();
 
   if (result != OK) {

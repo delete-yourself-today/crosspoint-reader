@@ -8,6 +8,7 @@
 
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
+#include "WifiConfigImport.h"
 #include "WifiCredentialStore.h"
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
@@ -21,6 +22,7 @@ void WifiSelectionActivity::onEnter() {
   {
     RenderLock lock(*this);
     WIFI_STORE.loadFromFile();
+    importWifiConfigFromFile();  // seed networks from /wifi.json if present (fork addition)
   }
 
   // Reset state

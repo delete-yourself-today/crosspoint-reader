@@ -268,8 +268,8 @@ void CoverGridHomeUi::drawGrid(UiScreen& screen) {
 }
 
 void CoverGridHomeUi::drawTabs(UiScreen& screen, fui::Rect rect) {
-  static constexpr const uint8_t* ICONS[] = {FolderIcon, LibraryIcon, BlocksIcon, TransferIcon, Settings2Icon,
-                                            BookmarkOutlineIcon};
+  static constexpr const uint8_t* ICONS[] = {FolderIcon,   LibraryIcon,   BlocksIcon,
+                                             TransferIcon, Settings2Icon, BookmarkOutlineIcon};
   int count = 0;
   for (int i = 0; i < 6; ++i) {
     if (i == 2 && !hasOpds) continue;

@@ -256,8 +256,7 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
 // WiFiClient inside runGetWolf, so this is safe for non-TLS targets too.
 HttpDownloader::DownloadError runGetSecure(const std::string& url, const std::string& username,
                                            const std::string& password, Sink& sink,
-                                           bool downgradeRedirectsToHttp = false,
-                                           const std::string& bearerToken = "") {
+                                           bool downgradeRedirectsToHttp = false, const std::string& bearerToken = "") {
 #if defined(FREEINK_NET_WOLFSSL)
   return runGetWolf(url, username, password, sink, downgradeRedirectsToHttp, bearerToken);
 #else

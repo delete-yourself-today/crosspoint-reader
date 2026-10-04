@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 /**
  * Seeds WiFi credentials from a plaintext JSON file on the SD card root
  * (/wifi.json), so networks can be provisioned without on-device keyboard
@@ -9,11 +11,11 @@
  *   [ { "ssid": "A", "password": "x" }, { "ssid": "B", "password": "y" } ]
  *
  * Entries are merged into WifiCredentialStore (persisted, obfuscated on disk).
- * When the device has no last-connected network yet, the first imported network
- * becomes the auto-connect target, so a freshly seeded device connects with no
- * interaction. Idempotent: only writes when a credential is new or changed, so
- * it is safe to leave the file in place across boots.
+ * The first network is returned as the preferred auto-connect target. When the
+ * device has no last-connected network yet, it is also persisted as the initial
+ * target. Only changed credentials are written, so the file can remain on SD.
  *
- * Returns true if any credential was newly imported or updated.
+ * Returns true if any credential was newly imported or updated. When provided,
+ * preferredSsid receives the first network in the file for auto-connect.
  */
-bool importWifiConfigFromFile();
+bool importWifiConfigFromFile(std::string* preferredSsid = nullptr);

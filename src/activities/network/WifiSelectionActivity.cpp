@@ -89,12 +89,13 @@ void WifiSelectionActivity::onPromptEvent(const fui::ActionEvent& event, void* u
 void WifiSelectionActivity::onEnter() {
   Activity::onEnter();
 
+  std::string filePreferredSsid;
   // Load saved WiFi credentials - SD card operations need lock as we use SPI
   // for both
   {
     RenderLock lock(*this);
     WIFI_STORE.loadFromFile();
-    importWifiConfigFromFile();  // seed networks from /wifi.json if present (fork addition)
+    importWifiConfigFromFile(&filePreferredSsid);
   }
 
   // Reset state
@@ -142,15 +143,21 @@ void WifiSelectionActivity::onEnter() {
   // Trigger first update to show scanning message
   requestUpdate();
 
-  // Attempt to auto-connect to known networks. Try the last successful
-  // network first for speed, then scan and try any visible saved networks by
-  // signal strength. The user can interrupt this and show the scan result.
+  // Prefer the first network in wifi.json over the last successful network.
+  // On failure, scan and try visible saved networks by signal strength.
   if (allowAutoConnect && savedCredentialCount != 0) {
-    const std::string lastSsid = WIFI_STORE.getLastConnectedSsid();
-    if (!lastSsid.empty()) {
-      const auto cred = WIFI_STORE.findCredential(lastSsid);
+    if (!filePreferredSsid.empty()) {
+      const auto cred = WIFI_STORE.findCredential(filePreferredSsid);
       if (cred && tryAutoConnectCredential(*cred)) {
         return;
+      }
+    } else {
+      const std::string lastSsid = WIFI_STORE.getLastConnectedSsid();
+      if (!lastSsid.empty()) {
+        const auto cred = WIFI_STORE.findCredential(lastSsid);
+        if (cred && tryAutoConnectCredential(*cred)) {
+          return;
+        }
       }
     }
 
@@ -459,6 +466,20 @@ void WifiSelectionActivity::showNetworkListFromAutoConnect() {
 }
 
 void WifiSelectionActivity::attemptConnection() {
+  // The file may have changed since this screen opened or the last attempt.
+  // Only replace a password that came from the saved credential store.
+  {
+    RenderLock lock(*this);
+    importWifiConfigFromFile();
+    if (usedSavedPassword) {
+      const auto cred = WIFI_STORE.findCredential(selectedSSID);
+      if (cred) {
+        enteredPassword = cred->password;
+        selectedRequiresPassword = !cred->password.empty();
+      }
+    }
+  }
+
   state = autoConnecting ? WifiSelectionState::AUTO_CONNECTING : WifiSelectionState::CONNECTING;
   connectionStartTime = millis();
   connectedIP.clear();

@@ -5,6 +5,7 @@
 #include <Logging.h>
 
 #include <string>
+#include <utility>
 
 #include "WifiCredentialStore.h"
 
@@ -12,7 +13,8 @@ namespace {
 constexpr char WIFI_CONFIG_PATH[] = "/wifi.json";
 }  // namespace
 
-bool importWifiConfigFromFile() {
+bool importWifiConfigFromFile(std::string* preferredSsid) {
+  if (preferredSsid) preferredSsid->clear();
   if (!Storage.exists(WIFI_CONFIG_PATH)) return false;
 
   const String json = Storage.readFile(WIFI_CONFIG_PATH);
@@ -33,9 +35,8 @@ bool importWifiConfigFromFile() {
     if (ssid.empty()) return;
     if (firstSsid.empty()) firstSsid = ssid;
 
-    const auto* existing = WIFI_STORE.findCredential(ssid);
-    if (!existing || existing->password != password) {
-      WIFI_STORE.addCredential(ssid, password);  // persists (obfuscated)
+    const auto existing = WIFI_STORE.findCredential(ssid);
+    if ((!existing || existing->password != password) && WIFI_STORE.addCredential(ssid, password)) {
       imported = true;
       LOG_INF("WIFI", "Imported network from wifi.json: %s", ssid.c_str());
     }
@@ -55,6 +56,8 @@ bool importWifiConfigFromFile() {
   if (!firstSsid.empty() && WIFI_STORE.getLastConnectedSsid().empty()) {
     WIFI_STORE.setLastConnectedSsid(firstSsid);  // guarded internally; persists
   }
+
+  if (preferredSsid) *preferredSsid = std::move(firstSsid);
 
   return imported;
 }

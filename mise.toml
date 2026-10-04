@@ -1,0 +1,4 @@
+[tools]
+pipx = "1.17.2"
+"pipx:pioarduino" = "6.1.19"
+"pipx:clang-format" = "21.1.8"
